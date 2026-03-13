@@ -334,8 +334,11 @@ class MBPOOnPolicyRunner(OnPolicyRunner):
 
     def load(self, path: str, load_optimizer: bool = True, map_location: str | None = None):
         loaded_dict = torch.load(path, weights_only=False, map_location=map_location)
-        # -- Load model
-        resumed_training = self.alg.policy.load_state_dict(loaded_dict["model_state_dict"])
+        # -- Load model (skip if load_policy is False to allow training PPO from scratch)
+        if self.cfg.get("load_policy", True):
+            resumed_training = self.alg.policy.load_state_dict(loaded_dict["model_state_dict"])
+        else:
+            resumed_training = False
         # -- Load system dynamics model
         if self.cfg["load_system_dynamics"]:
             if self.cfg["system_dynamics_load_path"] is not None:

@@ -259,6 +259,7 @@ class OnPolicyRunner:
             log_string += f"""{'Mean reward:':>{pad}} {statistics.mean(locs['rewbuffer']):.2f}\n"""
             # -- episode info
             log_string += f"""{'Mean episode length:':>{pad}} {statistics.mean(locs['lenbuffer']):.2f}\n"""
+            log_string += f"""{'Num envs:':>{pad}} {self.env.num_envs}\n"""
         else:
             log_string = (
                 f"""{'#' * width}\n"""

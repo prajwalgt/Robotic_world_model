@@ -22,10 +22,12 @@ class AnymalDFlatPPOPretrainRunnerCfg(AnymalDFlatPPORunnerCfg):
         ensemble_size=1,
         history_horizon=32,
         architecture_config = {
-            "type": "rnn",
-            "rnn_type": "gru",
-            "rnn_num_layers": 2,
-            "rnn_hidden_size": 256,
+            "type": "decoder_transformer",
+            "decoder_transformer_d_model": 64,
+            "decoder_transformer_num_heads": 8,
+            "decoder_transformer_num_layers": 2,
+            "decoder_transformer_ffn_dim": 256,
+            "decoder_transformer_max_seq_len": 32,
             "state_mean_shape": [128],
             "state_logstd_shape": [128],
             "extension_shape": [128],
@@ -110,9 +112,11 @@ class AnymalDFlatPPOPretrainRunnerCfg(AnymalDFlatPPORunnerCfg):
 @configclass
 class AnymalDFlatPPOFinetuneRunnerCfg(AnymalDFlatPPOPretrainRunnerCfg):
     resume = True
-    load_run = "2026-03-04_13-09-09_pretrain" #"2025-11-04_09-59-00"
+    # load_run = "2026-03-04_13-09-09_pretrain" #"2025-11-04_09-59-00"
+    load_run = ".*_pretrain"
     load_system_dynamics = True
-    system_dynamics_load_path = "model_2000.pt" #"logs/rsl_rl/anymal_d_flat/2025-11-04_14-31-20_pretrain_rnn/model_5000.pt"
+    # system_dynamics_load_path = "model_2000.pt" #"logs/rsl_rl/anymal_d_flat/2025-11-04_14-31-20_pretrain_rnn/model_5000.pt"
+    system_dynamics_load_path = None
     system_dynamics_warmup_iterations = 500
     run_name = "finetune"
     def __post_init__(self):
@@ -130,5 +134,8 @@ class AnymalDFlatPPOFinetuneRunnerCfg(AnymalDFlatPPOPretrainRunnerCfg):
 class AnymalDFlatPPOVisualizeRunnerCfg(AnymalDFlatPPOPretrainRunnerCfg):
     resume = True
     load_system_dynamics = True
-    system_dynamics_load_path = "logs/rsl_rl/anymal_d_flat/2026-03-04_13-09-09_pretrain/model_2000.pt" #"logs/rsl_rl/anymal_d_flat/2025-11-04_14-31-20_pretrain_rnn/model_5000.pt"
+    load_run = ".*_pretrain"
+    load_checkpoint = "model_.*.pt"
+    system_dynamics_load_path = None
+    # system_dynamics_load_path = "logs/rsl_rl/anymal_d_flat/2026-03-04_13-09-09_pretrain/model_2000.pt" #"logs/rsl_rl/anymal_d_flat/2025-11-04_14-31-20_pretrain_rnn/model_5000.pt"
     run_name = "visualize"
