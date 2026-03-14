@@ -1,16 +1,11 @@
-# Copyright (c) 2022-2025, The Isaac Lab Project Developers (https://github.com/isaac-sim/IsaacLab/blob/main/CONTRIBUTORS.md).
-# All rights reserved.
-#
-# SPDX-License-Identifier: BSD-3-Clause
-
 from isaaclab.managers import ObservationGroupCfg as ObsGroup
 from isaaclab.managers import ObservationTermCfg as ObsTerm
 from isaaclab.managers import RewardTermCfg as RewTerm
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.utils import configclass
 
-from isaaclab_tasks.manager_based.locomotion.velocity.config.anymal_d.rough_env_cfg import AnymalDRoughEnvCfg
-from isaaclab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import ObservationsCfg, RewardsCfg
+from isaaclab_tasks.manager_based.locomotion.velocity.config.g1.rough_env_cfg import G1RoughEnvCfg, G1Rewards
+from isaaclab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import ObservationsCfg
 
 from isaaclab.terrains.config.rough import ROUGH_TERRAINS_CFG  # isort: skip
 
@@ -19,25 +14,33 @@ import mbrl.tasks.manager_based.locomotion.velocity.mdp as mdp
 
 
 @configclass
-class RewardsCfg_TRAIN(RewardsCfg):
+class G1RewardsCfg_TRAIN(G1Rewards):
     stand_still = RewTerm(
         func=mdp.joint_pos_stand_still, weight=-1.0, params={"command_name": "base_velocity", "threshold": 0.05}
-        )
+    )
 
 
 @configclass
-class AnymalDFlatEnvCfg(AnymalDRoughEnvCfg):
-    
-    rewards: RewardsCfg_TRAIN = RewardsCfg_TRAIN()
-    
+class G1FlatEnvCfg(G1RoughEnvCfg):
+
+    rewards: G1RewardsCfg_TRAIN = G1RewardsCfg_TRAIN()
+
     def __post_init__(self):
         # post init of parent
         super().__post_init__()
 
-        # override rewards
+        # override rewards for flat terrain (from G1FlatEnvCfg in isaaclab_tasks)
+        self.rewards.track_ang_vel_z_exp.weight = 1.0
+        self.rewards.lin_vel_z_l2.weight = -0.2
+        self.rewards.action_rate_l2.weight = -0.005
+        self.rewards.dof_acc_l2.weight = -1.0e-7
+        self.rewards.feet_air_time.weight = 0.75
+        self.rewards.feet_air_time.params["threshold"] = 0.4
+        self.rewards.dof_torques_l2.weight = -2.0e-6
+        self.rewards.dof_torques_l2.params["asset_cfg"] = SceneEntityCfg(
+            "robot", joint_names=[".*_hip_.*", ".*_knee_joint"]
+        )
         self.rewards.flat_orientation_l2.weight = -5.0
-        self.rewards.dof_torques_l2.weight = -2.5e-5
-        self.rewards.feet_air_time.weight = 0.5
         # change terrain to flat
         self.scene.terrain.terrain_type = "plane"
         self.scene.terrain.terrain_generator = None
@@ -49,15 +52,22 @@ class AnymalDFlatEnvCfg(AnymalDRoughEnvCfg):
 
 
 @configclass
-class AnymalDFlatEnvCfg_INIT(AnymalDFlatEnvCfg):
+class G1FlatEnvCfg_INIT(G1FlatEnvCfg):
     def __post_init__(self):
         # post init of parent
         super().__post_init__()
 
-        # revert rewards
-        self.rewards.flat_orientation_l2.weight = 0.0
-        self.rewards.dof_torques_l2.weight = -1.0e-5
-        self.rewards.feet_air_time.weight = 0.125
+        # revert rewards to rough-terrain defaults for initial data collection
+        self.rewards.track_ang_vel_z_exp.weight = 2.0
+        self.rewards.lin_vel_z_l2.weight = 0.0
+        self.rewards.action_rate_l2.weight = -0.005
+        self.rewards.dof_acc_l2.weight = -1.25e-7
+        self.rewards.feet_air_time.weight = 0.25
+        self.rewards.dof_torques_l2.weight = -1.5e-7
+        self.rewards.dof_torques_l2.params["asset_cfg"] = SceneEntityCfg(
+            "robot", joint_names=[".*_hip_.*", ".*_knee_joint", ".*_ankle_.*"]
+        )
+        self.rewards.flat_orientation_l2.weight = -1.0
         # revert terrain
         self.scene.terrain.terrain_type = "generator"
         self.scene.terrain.terrain_generator = ROUGH_TERRAINS_CFG
@@ -84,11 +94,10 @@ class ObservationsCfg_PRETRAIN(ObservationsCfg):
         joint_pos = ObsTerm(func=mdp.joint_pos_rel)
         joint_vel = ObsTerm(func=mdp.joint_vel_rel)
         joint_torque = ObsTerm(func=mdp.joint_effort)
-        
+
         def __post_init__(self):
             self.enable_corruption = False
             self.concatenate_terms = True
-
 
     @configclass
     class SystemActionCfg(ObsGroup):
@@ -100,35 +109,37 @@ class ObservationsCfg_PRETRAIN(ObservationsCfg):
             self.enable_corruption = False
             self.concatenate_terms = True
 
-
     @configclass
     class SystemExtensionCfg(ObsGroup):
 
         pass
 
-
     @configclass
     class SystemContactCfg(ObsGroup):
 
-        # observation terms (order preserved)
-        thigh_contact = ObsTerm(func=mdp.body_contact, params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*THIGH"), "threshold": 1.0})
-        foot_contact = ObsTerm(func=mdp.body_contact, params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*FOOT"), "threshold": 1.0})
+        # G1 has no thigh contacts (undesired_contacts = None)
+        # Only foot contacts on ankle roll links (2 feet)
+        foot_contact = ObsTerm(
+            func=mdp.body_contact,
+            params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_ankle_roll_link"), "threshold": 1.0},
+        )
 
         def __post_init__(self):
             self.enable_corruption = False
             self.concatenate_terms = True
-
 
     @configclass
     class SystemTerminationCfg(ObsGroup):
 
-        # observation terms (order preserved)
-        base_contact = ObsTerm(func=mdp.body_contact, params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names="base"), "threshold": 1.0})
+        # G1 uses torso_link as base body
+        base_contact = ObsTerm(
+            func=mdp.body_contact,
+            params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names="torso_link"), "threshold": 1.0},
+        )
 
         def __post_init__(self):
             self.enable_corruption = False
             self.concatenate_terms = True
-
 
     # observation groups
     system_state: SystemStateCfg = SystemStateCfg()
@@ -139,14 +150,14 @@ class ObservationsCfg_PRETRAIN(ObservationsCfg):
 
 
 @configclass
-class AnymalDFlatEnvCfg_PRETRAIN(AnymalDFlatEnvCfg):
-    
+class G1FlatEnvCfg_PRETRAIN(G1FlatEnvCfg):
+
     # override observation terms
     observations: ObservationsCfg_PRETRAIN = ObservationsCfg_PRETRAIN()
-    
+
 
 @configclass
-class AnymalDFlatEnvCfg_FINETUNE(AnymalDFlatEnvCfg_PRETRAIN):
+class G1FlatEnvCfg_FINETUNE(G1FlatEnvCfg_PRETRAIN):
     def __post_init__(self) -> None:
         # post init of parent
         super().__post_init__()
@@ -159,8 +170,8 @@ class AnymalDFlatEnvCfg_FINETUNE(AnymalDFlatEnvCfg_PRETRAIN):
 
 
 @configclass
-class AnymalDFlatEnvCfg_VISUALIZE(AnymalDFlatEnvCfg_PRETRAIN):
-    
+class G1FlatEnvCfg_VISUALIZE(G1FlatEnvCfg_PRETRAIN):
+
     def __post_init__(self):
         # post init of parent
         super().__post_init__()
@@ -187,6 +198,6 @@ class AnymalDFlatEnvCfg_VISUALIZE(AnymalDFlatEnvCfg_PRETRAIN):
                 "roll": (-0.0, 0.0),
                 "pitch": (-0.0, 0.0),
                 "yaw": (-0.0, 0.0),
-            }
+            },
         }
         self.events.reset_robot_joints.func = mdp.reset_joints_by_scale_visualize

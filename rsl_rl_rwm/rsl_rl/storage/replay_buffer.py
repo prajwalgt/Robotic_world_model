@@ -98,6 +98,16 @@ class ReplayBuffer:
                 return replay_buf[sampled_envs[:, None], sampled_starts[:, None] + offsets]
 
         env_indices, start_indices = valid_indices
+        if len(env_indices) == 0:
+            # No valid reset-free sequences found; fall back to random sampling ignoring resets
+            max_start_idx = max(self.num_transitions - sequence_length, 0) + 1
+            sampled_envs = torch.tensor(np.random.choice(max(self.num_envs, 1), size=mini_batch_size), device=self.device)
+            sampled_starts = torch.tensor(np.random.choice(max(max_start_idx, 1), size=mini_batch_size), device=self.device)
+            offsets = torch.arange(sequence_length, device=self.device)
+            if isinstance(replay_buf, list):
+                return [buf[sampled_envs[:, None], sampled_starts[:, None] + offsets] if buf is not None else None for buf in replay_buf]
+            else:
+                return replay_buf[sampled_envs[:, None], sampled_starts[:, None] + offsets]
         sampled_idxs = torch.tensor(np.random.choice(len(env_indices), size=mini_batch_size), device=self.device)
         sampled_envs = env_indices[sampled_idxs]
         sampled_starts = start_indices[sampled_idxs]

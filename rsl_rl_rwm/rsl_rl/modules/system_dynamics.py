@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from rsl_rl.modules.architectures import MLPBase, RNNBase, MLPStateHead, MLPAuxiliaryHead
+from rsl_rl.modules.architectures import MLPBase, RNNBase, TransformerBase, MLPStateHead, MLPAuxiliaryHead
 
 class SystemDynamicsEnsemble(nn.Module):
     def __init__(
@@ -78,6 +78,15 @@ class SystemDynamicsEnsemble(nn.Module):
                 input_dim=input_dim,
                 device=self.device,
                 architecture_config=self.architecture_config
+            )
+        elif self.architecture_config["type"] == "transformer":
+            input_dim = self.state_dim + self.action_dim
+            self.base_output_dim = self.architecture_config.get("transformer_hidden_size", 256)
+            self.prediction_type = "single"
+            return TransformerBase(
+                input_dim=input_dim,
+                device=self.device,
+                architecture_config=self.architecture_config,
             )
         else:
             raise ValueError("Invalid architecture type.")
