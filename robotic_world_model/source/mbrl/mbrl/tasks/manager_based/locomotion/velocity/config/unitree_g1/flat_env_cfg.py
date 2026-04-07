@@ -4,13 +4,34 @@ from isaaclab.managers import RewardTermCfg as RewTerm
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.utils import configclass
 
+from isaaclab.utils.noise import AdditiveUniformNoiseCfg as Unoise
+
+from isaaclab_assets import G1_29DOF_CFG
+
 from isaaclab_tasks.manager_based.locomotion.velocity.config.g1.rough_env_cfg import G1RoughEnvCfg, G1Rewards
 from isaaclab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import ObservationsCfg
+import isaaclab_tasks.manager_based.locomotion.velocity.mdp as base_mdp
 
 from isaaclab.terrains.config.rough import ROUGH_TERRAINS_CFG  # isort: skip
 
 from mbrl.mbrl.envs.mdp.commands import UniformVelocityCommand_Visualize, SampleUniformVelocityCommand
 import mbrl.tasks.manager_based.locomotion.velocity.mdp as mdp
+
+# Joint names for the 29-DOF G1 (legs + waist + arms with wrists, no fingers)
+G1_29DOF_JOINT_NAMES = [
+    ".*_hip_yaw_joint",
+    ".*_hip_roll_joint",
+    ".*_hip_pitch_joint",
+    ".*_knee_joint",
+    ".*_ankle_pitch_joint",
+    ".*_ankle_roll_joint",
+    "waist_.*_joint",
+    ".*_shoulder_pitch_joint",
+    ".*_shoulder_roll_joint",
+    ".*_shoulder_yaw_joint",
+    ".*_elbow_joint",
+    ".*_wrist_.*_joint",
+]
 
 
 @configclass
@@ -29,18 +50,71 @@ class G1FlatEnvCfg(G1RoughEnvCfg):
         # post init of parent
         super().__post_init__()
 
-        # override rewards for flat terrain (from G1FlatEnvCfg in isaaclab_tasks)
-        self.rewards.track_ang_vel_z_exp.weight = 1.0
-        self.rewards.lin_vel_z_l2.weight = -0.2
-        self.rewards.action_rate_l2.weight = -0.005
-        self.rewards.dof_acc_l2.weight = -1.0e-7
-        self.rewards.feet_air_time.weight = 0.75
-        self.rewards.feet_air_time.params["threshold"] = 0.4
-        self.rewards.dof_torques_l2.weight = -2.0e-6
-        self.rewards.dof_torques_l2.params["asset_cfg"] = SceneEntityCfg(
-            "robot", joint_names=[".*_hip_.*", ".*_knee_joint"]
+        # Switch to 29-DOF robot (legs + waist + arms with wrists, no fingers)
+        self.scene.robot = G1_29DOF_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
+        self.scene.robot.spawn.activate_contact_sensors = True
+
+        # Restrict actions to the 29 actuated joints only
+        self.actions.joint_pos = base_mdp.JointPositionActionCfg(
+            asset_name="robot", joint_names=G1_29DOF_JOINT_NAMES, scale=0.5, use_default_offset=True
         )
-        self.rewards.flat_orientation_l2.weight = -5.0
+
+        # Fix reward terms that reference 37-DOF-specific joint names
+        # torso_joint → replaced by waist joints in 29-DOF; upper body wqd = -1.0
+        self.rewards.joint_deviation_torso = RewTerm(
+            func=base_mdp.joint_deviation_l1,
+            weight=-1.0,
+            params={"asset_cfg": SceneEntityCfg("robot", joint_names=["waist_.*_joint"])},
+        )
+        # No finger joints in 29-DOF robot
+        self.rewards.joint_deviation_fingers = None
+        # elbow in 29-DOF is .*_elbow_joint (not elbow_pitch + elbow_roll); upper body wqd = -1.0
+        self.rewards.joint_deviation_arms = RewTerm(
+            func=base_mdp.joint_deviation_l1,
+            weight=-1.0,
+            params={
+                "asset_cfg": SceneEntityCfg(
+                    "robot",
+                    joint_names=[
+                        ".*_shoulder_pitch_joint",
+                        ".*_shoulder_roll_joint",
+                        ".*_shoulder_yaw_joint",
+                        ".*_elbow_joint",
+                        ".*_wrist_.*_joint",
+                    ],
+                )
+            },
+        )
+        # lower body hip deviation wqd = -0.1
+        self.rewards.joint_deviation_hip.weight = -0.1
+
+        # Table S6 reward weights for G1
+        self.rewards.track_ang_vel_z_exp.weight = 0.5  # wωz
+        self.rewards.lin_vel_z_l2.weight = -2.0  # wvz
+        self.rewards.action_rate_l2.weight = -0.05  # w˙a
+        self.rewards.dof_acc_l2.weight = -2.5e-7  # w¨q, all 29 joints
+        self.rewards.dof_acc_l2.params["asset_cfg"] = SceneEntityCfg("robot", joint_names=G1_29DOF_JOINT_NAMES)
+        self.rewards.feet_air_time.weight = 0.0  # wfa = 0 for G1
+        self.rewards.dof_torques_l2.weight = -2.5e-5  # wqτ, all 29 joints
+        self.rewards.dof_torques_l2.params["asset_cfg"] = SceneEntityCfg("robot", joint_names=G1_29DOF_JOINT_NAMES)
+        self.rewards.flat_orientation_l2.weight = -5.0  # wg
+        # wc = -1.0: penalize undesired contacts on knee links (no thigh_link in G1 29-DOF)
+        self.rewards.undesired_contacts = RewTerm(
+            func=base_mdp.undesired_contacts,
+            weight=-1.0,
+            params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_knee_link"), "threshold": 1.0},
+        )
+        # wfc = 1.0: reward feet clearance during swing
+        self.rewards.foot_clearance = RewTerm(
+            func=mdp.foot_clearance,
+            weight=1.0,
+            params={
+                "asset_cfg": SceneEntityCfg("robot", body_names=".*_ankle_roll_link"),
+                "target_height": 0.1,
+                "std": 0.25,
+                "tanh_mult": 2.0,
+            },
+        )
         # change terrain to flat
         self.scene.terrain.terrain_type = "plane"
         self.scene.terrain.terrain_generator = None
@@ -85,15 +159,40 @@ class G1FlatEnvCfg_INIT(G1FlatEnvCfg):
 class ObservationsCfg_PRETRAIN(ObservationsCfg):
 
     @configclass
+    class PolicyCfg(ObservationsCfg.PolicyCfg):
+        """Override policy observations to restrict to 29-DOF joints."""
+
+        joint_pos = ObsTerm(
+            func=mdp.joint_pos_rel,
+            noise=Unoise(n_min=-0.01, n_max=0.01),
+            params={"asset_cfg": SceneEntityCfg("robot", joint_names=G1_29DOF_JOINT_NAMES)},
+        )
+        joint_vel = ObsTerm(
+            func=mdp.joint_vel_rel,
+            noise=Unoise(n_min=-1.5, n_max=1.5),
+            params={"asset_cfg": SceneEntityCfg("robot", joint_names=G1_29DOF_JOINT_NAMES)},
+        )
+        actions = ObsTerm(func=mdp.last_action)
+
+    @configclass
     class SystemStateCfg(ObsGroup):
 
         # observation terms (order preserved)
         base_lin_vel = ObsTerm(func=mdp.base_lin_vel)
         base_ang_vel = ObsTerm(func=mdp.base_ang_vel)
         projected_gravity = ObsTerm(func=mdp.projected_gravity)
-        joint_pos = ObsTerm(func=mdp.joint_pos_rel)
-        joint_vel = ObsTerm(func=mdp.joint_vel_rel)
-        joint_torque = ObsTerm(func=mdp.joint_effort)
+        joint_pos = ObsTerm(
+            func=mdp.joint_pos_rel,
+            params={"asset_cfg": SceneEntityCfg("robot", joint_names=G1_29DOF_JOINT_NAMES)},
+        )
+        joint_vel = ObsTerm(
+            func=mdp.joint_vel_rel,
+            params={"asset_cfg": SceneEntityCfg("robot", joint_names=G1_29DOF_JOINT_NAMES)},
+        )
+        joint_torque = ObsTerm(
+            func=mdp.joint_effort,
+            params={"asset_cfg": SceneEntityCfg("robot", joint_names=G1_29DOF_JOINT_NAMES)},
+        )
 
         def __post_init__(self):
             self.enable_corruption = False
@@ -117,11 +216,43 @@ class ObservationsCfg_PRETRAIN(ObservationsCfg):
     @configclass
     class SystemContactCfg(ObsGroup):
 
-        # G1 has no thigh contacts (undesired_contacts = None)
-        # Only foot contacts on ankle roll links (2 feet)
-        foot_contact = ObsTerm(
+        # Paper Table S3: body_contact (26) + foot_height (2) + foot_velocity (2) = 30 dims
+        # Matching paper's privileged information for G1
+        body_contact = ObsTerm(
             func=mdp.body_contact,
-            params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_ankle_roll_link"), "threshold": 1.0},
+            params={
+                "sensor_cfg": SceneEntityCfg(
+                    "contact_forces",
+                    body_names=[
+                        "pelvis",
+                        "waist_yaw_link",
+                        "waist_roll_link",
+                        "torso_link",
+                        ".*_hip_yaw_link",
+                        ".*_hip_roll_link",
+                        ".*_hip_pitch_link",
+                        ".*_knee_link",
+                        ".*_ankle_pitch_link",
+                        ".*_ankle_roll_link",
+                        ".*_shoulder_pitch_link",
+                        ".*_shoulder_roll_link",
+                        ".*_shoulder_yaw_link",
+                        ".*_elbow_link",
+                        ".*_wrist_roll_link",
+                        ".*_wrist_pitch_link",
+                        ".*_wrist_yaw_link",
+                    ],
+                ),
+                "threshold": 1.0,
+            },
+        )
+        foot_height = ObsTerm(
+            func=mdp.body_height_w,
+            params={"asset_cfg": SceneEntityCfg("robot", body_names=".*_ankle_roll_link")},
+        )
+        foot_velocity = ObsTerm(
+            func=mdp.body_lin_vel_w_norm,
+            params={"asset_cfg": SceneEntityCfg("robot", body_names=".*_ankle_roll_link")},
         )
 
         def __post_init__(self):
@@ -142,6 +273,7 @@ class ObservationsCfg_PRETRAIN(ObservationsCfg):
             self.concatenate_terms = True
 
     # observation groups
+    policy: PolicyCfg = PolicyCfg()
     system_state: SystemStateCfg = SystemStateCfg()
     system_action: SystemActionCfg = SystemActionCfg()
     # system_extension: SystemExtensionCfg = SystemExtensionCfg()
