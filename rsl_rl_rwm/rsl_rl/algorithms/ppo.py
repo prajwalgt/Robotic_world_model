@@ -13,7 +13,7 @@ from itertools import chain
 from rsl_rl.modules import ActorCritic
 from rsl_rl.modules.rnd import RandomNetworkDistillation
 from rsl_rl.storage import RolloutStorage
-from rsl_rl.utils import string_to_callable
+from rsl_rl.utils import resolve_optimizer, string_to_callable
 
 
 class PPO:
@@ -39,6 +39,8 @@ class PPO:
         desired_kl=0.01,
         device="cpu",
         normalize_advantage_per_mini_batch=False,
+        optimizer="adam",
+        share_cnn_encoders=False,
         # RND parameters
         rnd_cfg: dict | None = None,
         # Symmetry parameters
@@ -95,7 +97,7 @@ class PPO:
         self.policy = policy
         self.policy.to(self.device)
         # Create optimizer
-        self.optimizer = optim.Adam(self.policy.parameters(), lr=learning_rate)
+        self.optimizer = resolve_optimizer(optimizer)(self.policy.parameters(), lr=learning_rate)
         # Create rollout storage
         self.storage: RolloutStorage = None  # type: ignore
         self.transition = RolloutStorage.Transition()
@@ -114,6 +116,7 @@ class PPO:
         self.schedule = schedule
         self.learning_rate = learning_rate
         self.normalize_advantage_per_mini_batch = normalize_advantage_per_mini_batch
+        self.share_cnn_encoders = share_cnn_encoders
 
     def init_storage(self, training_type, num_envs, num_transitions_per_env, obs, actions_shape):
         # create rollout storage

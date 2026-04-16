@@ -1,5 +1,5 @@
-from configs import BaseConfig, AnymalDFlatConfig
-from envs import BaseEnv, AnymalDFlatEnv
+from configs import BaseConfig, AnymalDFlatConfig, CassieFlatConfig
+from envs import BaseEnv, AnymalDFlatEnv, CassieFlatEnv
 from policy_training import PolicyTraining
 from rsl_rl.modules import ActorCritic, SystemDynamicsEnsemble
 from rsl_rl.algorithms import PPO
@@ -26,6 +26,8 @@ class ModelBasedExperiment:
     def resolve_environment_cls(self, environment):
         if environment == "anymal_d_flat":
             return AnymalDFlatEnv
+        elif environment == "cassie_flat":
+            return CassieFlatEnv
         else:
             raise ValueError(f"Unknown environment: {environment}")
 
@@ -300,6 +302,9 @@ def run(config: BaseConfig):
 def resolve_task_config(task: str):
     if task == "anymal_d_flat":
         config = AnymalDFlatConfig()
+        return config
+    elif task == "cassie_flat":
+        config = CassieFlatConfig()
         return config
     else:
         raise ValueError(f"Unknown task: {task}")
