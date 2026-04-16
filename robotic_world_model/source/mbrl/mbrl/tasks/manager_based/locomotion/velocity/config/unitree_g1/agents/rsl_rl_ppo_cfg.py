@@ -16,8 +16,8 @@ from mbrl.rl.rsl_rl import (
 
 # fmt: off
 
-# 96-dim state normalizer: [base_lin_vel(3), base_ang_vel(3), projected_gravity(3),
-#                            joint_pos(29), joint_vel(29), joint_torque(29)]
+# 120-dim state normalizer: [base_lin_vel(3), base_ang_vel(3), projected_gravity(3),
+#                             joint_pos(37), joint_vel(37), joint_torque(37)]
 # Placeholder values — must be refined from Init phase data collection.
 _STATE_MEAN = [
     # base_lin_vel (3)
@@ -26,18 +26,12 @@ _STATE_MEAN = [
     0.0, 0.0, 0.0,
     # projected_gravity (3)
     0.0, 0.0, -1.0,
-    # joint_pos (29) — zeros (relative to default)
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    # joint_vel (29) — zeros (placeholder)
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    # joint_torque (29) — zeros (placeholder)
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+    # joint_pos (37) — zeros (relative to default)
+    *([0.0] * 37),
+    # joint_vel (37) — zeros (placeholder)
+    *([0.0] * 37),
+    # joint_torque (37) — zeros (placeholder)
+    *([0.0] * 37),
 ]
 
 _STATE_STD = [
@@ -47,22 +41,16 @@ _STATE_STD = [
     0.3, 0.3, 0.5,
     # projected_gravity (3)
     0.02, 0.02, 0.04,
-    # joint_pos (29) — placeholder
-    0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15,
-    0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15,
-    0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15,
-    # joint_vel (29) — placeholder
-    1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5,
-    1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5,
-    1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5,
-    # joint_torque (29) — placeholder
-    15.0, 15.0, 15.0, 15.0, 15.0, 15.0, 15.0, 15.0, 15.0, 15.0,
-    15.0, 15.0, 15.0, 15.0, 15.0, 15.0, 15.0, 15.0, 15.0, 15.0,
-    15.0, 15.0, 15.0, 15.0, 15.0, 15.0, 15.0, 15.0, 15.0,
+    # joint_pos (37) — placeholder
+    *([0.15] * 37),
+    # joint_vel (37) — placeholder
+    *([1.5] * 37),
+    # joint_torque (37) — placeholder
+    *([15.0] * 37),
 ]
 
-_ACTION_MEAN = [0.0] * 29
-_ACTION_STD = [1.0] * 29
+_ACTION_MEAN = [0.0] * 37
+_ACTION_STD = [1.0] * 37
 
 # fmt: on
 
@@ -72,7 +60,7 @@ class G1FlatPPOPretrainRunnerCfg(G1FlatPPORunnerCfg):
     class_name: str = "MBPOOnPolicyRunner"
 
     system_dynamics = RslRlSystemDynamicsCfg(
-        ensemble_size=5,
+        ensemble_size=1,
         history_horizon=32,
         architecture_config={
             "type": "rnn",
@@ -143,9 +131,9 @@ class G1FlatPPOPretrainRunnerCfg(G1FlatPPORunnerCfg):
         r"$v$\n$[m/s]$": [0, 1, 2],
         r"$\omega$\n$[rad/s]$": [3, 4, 5],
         r"$g$\n$[1]$": [6, 7, 8],
-        r"$q$\n$[rad]$": list(range(9, 38)),
-        r"$\dot{q}$\n$[rad/s]$": list(range(38, 67)),
-        r"$\tau$\n$[Nm]$": list(range(67, 96)),
+        r"$q$\n$[rad]$": list(range(9, 46)),
+        r"$\dot{q}$\n$[rad/s]$": list(range(46, 83)),
+        r"$\tau$\n$[Nm]$": list(range(83, 120)),
     }
     pca_obs_buf_size = 10000
 

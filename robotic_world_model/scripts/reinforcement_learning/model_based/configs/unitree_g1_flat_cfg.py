@@ -46,11 +46,11 @@ class UnitreeG1FlatConfig(BaseConfig):
             r"$v$\n$[m/s]$": [0, 1, 2],
             r"$\omega$\n$[rad/s]$": [3, 4, 5],
             r"$g$\n$[1]$": [6, 7, 8],
-            r"$q$\n$[rad]$": list(range(9, 38)),
-            r"$\dot{q}$\n$[rad/s]$": list(range(38, 67)),
-            r"$\tau$\n$[Nm]$": list(range(67, 96)),
+            r"$q$\n$[rad]$": list(range(9, 46)),
+            r"$\dot{q}$\n$[rad/s]$": list(range(46, 83)),
+            r"$\tau$\n$[Nm]$": list(range(83, 120)),
         })
-        # 96-dim state normalizer — placeholder values, refine after Init phase data collection
+        # 120-dim state normalizer — placeholder values, refine after Init phase data collection
         state_data_mean: List[float] = field(default_factory=lambda: [
             # base_lin_vel (3)
             0.0, 0.0, 0.0,
@@ -58,12 +58,12 @@ class UnitreeG1FlatConfig(BaseConfig):
             0.0, 0.0, 0.0,
             # projected_gravity (3)
             0.0, 0.0, -1.0,
-            # joint_pos (29)
-            *([0.0] * 29),
-            # joint_vel (29)
-            *([0.0] * 29),
-            # joint_torque (29)
-            *([0.0] * 29),
+            # joint_pos (37)
+            *([0.0] * 37),
+            # joint_vel (37)
+            *([0.0] * 37),
+            # joint_torque (37)
+            *([0.0] * 37),
         ])
         state_data_std: List[float] = field(default_factory=lambda: [
             # base_lin_vel (3)
@@ -72,21 +72,21 @@ class UnitreeG1FlatConfig(BaseConfig):
             0.3, 0.3, 0.5,
             # projected_gravity (3)
             0.02, 0.02, 0.04,
-            # joint_pos (29)
-            *([0.15] * 29),
-            # joint_vel (29)
-            *([1.5] * 29),
-            # joint_torque (29)
-            *([15.0] * 29),
+            # joint_pos (37)
+            *([0.15] * 37),
+            # joint_vel (37)
+            *([1.5] * 37),
+            # joint_torque (37)
+            *([15.0] * 37),
         ])
-        action_data_mean: List[float] = field(default_factory=lambda: [0.0] * 29)
-        action_data_std: List[float] = field(default_factory=lambda: [1.0] * 29)
+        action_data_mean: List[float] = field(default_factory=lambda: [0.0] * 37)
+        action_data_std: List[float] = field(default_factory=lambda: [1.0] * 37)
 
     @dataclass
     class ModelArchitectureConfig(BaseConfig.ModelArchitectureConfig):
         history_horizon: int = 32
         forecast_horizon: int = 8
-        ensemble_size: int = 5
+        ensemble_size: int = 1
         contact_dim: int = 34  # body_contact(30) + foot_height(2) + foot_velocity(2)
         termination_dim: int = 1
         architecture_config: Dict[str, object] = field(default_factory=lambda: {
@@ -104,8 +104,8 @@ class UnitreeG1FlatConfig(BaseConfig):
 
     @dataclass
     class PolicyArchitectureConfig(BaseConfig.PolicyArchitectureConfig):
-        observation_dim: int = 99   # 12 + 29*3
-        action_dim: int = 29
+        observation_dim: int = 123   # 12 + 37*3
+        action_dim: int = 37
         resume_path: str | None = None
 
     @dataclass
