@@ -99,7 +99,7 @@ class CassieFlatPPOPretrainRunnerCfg(CassieFlatPPORunnerCfg):
 
     def __post_init__(self):
         super().__post_init__()
-        self.max_iterations = 2000
+        self.max_iterations = 10000
         self.experiment_name = "cassie_flat"
 
 
@@ -107,7 +107,7 @@ class CassieFlatPPOPretrainRunnerCfg(CassieFlatPPORunnerCfg):
 class CassieFlatPPOFinetuneRunnerCfg(CassieFlatPPOPretrainRunnerCfg):
     resume = True
     load_system_dynamics = True
-    system_dynamics_load_path = "model_2000.pt"
+    system_dynamics_load_path = "model_10000.pt"
     system_dynamics_warmup_iterations = 500
     run_name = "finetune"
 
@@ -124,5 +124,6 @@ class CassieFlatPPOFinetuneRunnerCfg(CassieFlatPPOPretrainRunnerCfg):
 class CassieFlatPPOVisualizeRunnerCfg(CassieFlatPPOPretrainRunnerCfg):
     resume = True
     load_system_dynamics = True
-    system_dynamics_load_path = "logs/rsl_rl/cassie_flat/latest_pretrain/model_2000.pt"
+    # system_dynamics_load_path = "logs/rsl_rl/cassie_flat/latest_pretrain/model_10000.pt"
+    system_dynamics_load_path = "model_10000.pt"
     run_name = "visualize"

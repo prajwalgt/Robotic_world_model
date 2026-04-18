@@ -4,61 +4,58 @@ from isaaclab.managers import RewardTermCfg as RewTerm
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.utils import configclass
 
-from isaaclab_tasks.manager_based.locomotion.velocity.config.cassie.flat_env_cfg import (
-    CassieFlatEnvCfg as IsaacLabCassieFlatEnvCfg,
-)
-from isaaclab_tasks.manager_based.locomotion.velocity.config.cassie.rough_env_cfg import CassieRewardsCfg
-from isaaclab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import ObservationsCfg
+from isaaclab_tasks.manager_based.locomotion.velocity.config.cassie.rough_env_cfg import CassieRoughEnvCfg
+from isaaclab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import ObservationsCfg, RewardsCfg
 
 from mbrl.mbrl.envs.mdp.commands import SampleUniformVelocityCommand, UniformVelocityCommand_Visualize
 import mbrl.tasks.manager_based.locomotion.velocity.mdp as mdp
 
 
-@configclass
-class RewardsCfg_TRAIN(CassieRewardsCfg):
-    undesired_contacts = RewTerm(
-        func=mdp.undesired_contacts,
-        weight=0.0,
-        params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*tarsus"), "threshold": 1.0},
-    )
-    foot_clearance = RewTerm(
-        func=mdp.foot_clearance,
-        weight=0.0,
-        params={"asset_cfg": SceneEntityCfg("robot", body_names=".*toe"), "target_height": 0.2, "std": 0.05, "tanh_mult": 2.0},
-    )
-    joint_deviation = RewTerm(
-        func=mdp.joint_deviation_l1,
-        weight=0.0,
-        params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*"])},
-    )
+# @configclass
+# class RewardsCfg_TRAIN(RewardsCfg):
+    # foot_clearance = RewTerm(
+    #     func=mdp.foot_clearance,
+    #     weight=0.0,
+    #     params={"asset_cfg": SceneEntityCfg("robot", body_names=".*toe"), "target_height": 0.2, "std": 0.05, "tanh_mult": 2.0},
+    # )
+    # joint_deviation = RewTerm(
+    #     func=mdp.joint_deviation_l1,
+    #     weight=0.0,
+    #     params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*"])},
+    # )
 
 
 @configclass
-class CassieFlatEnvCfg(IsaacLabCassieFlatEnvCfg):
-    rewards: RewardsCfg_TRAIN = RewardsCfg_TRAIN()
+class CassieFlatEnvCfg(CassieRoughEnvCfg):
+    # rewards: RewardsCfg_TRAIN = RewardsCfg_TRAIN()
 
     def __post_init__(self):
         super().__post_init__()
-
-        self.rewards.undesired_contacts = RewTerm(
-            func=mdp.undesired_contacts,
-            weight=0.0,
-            params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*tarsus"), "threshold": 1.0},
-        )
-        self.rewards.joint_deviation_hip = None
-        self.rewards.joint_deviation_toes = None
-        self.rewards.dof_pos_limits = None
-        self.rewards.flat_orientation_l2.weight = -5.0
+        # Isaac rough sets undesired_contacts to None; keep zero-weight tarsus term for MBRL tooling.
+        # self.rewards.undesired_contacts = RewTerm(
+        #     func=mdp.undesired_contacts,
+        #     weight=0.0,
+        #     params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*tarsus"), "threshold": 1.0},
+        # )
+        self.rewards.flat_orientation_l2.weight = -2.5
         self.rewards.feet_air_time.weight = 5.0
-
+        self.rewards.joint_deviation_hip.params["asset_cfg"].joint_names = ["hip_rotation_.*"]
+        # change terrain to flat
+        self.scene.terrain.terrain_type = "plane"
+        self.scene.terrain.terrain_generator = None
+        # no height scan
+        self.scene.height_scanner = None
+        self.observations.policy.height_scan = None
+        # no terrain curriculum
+        self.curriculum.terrain_levels = None
 
 @configclass
 class CassieFlatEnvCfg_INIT(CassieFlatEnvCfg):
     def __post_init__(self):
         super().__post_init__()
 
-        self.rewards.flat_orientation_l2.weight = 0.0
-        self.rewards.feet_air_time.weight = 2.5
+        # self.rewards.flat_orientation_l2.weight = 0.0
+        # self.rewards.feet_air_time.weight = 2.5
 
 
 @configclass
