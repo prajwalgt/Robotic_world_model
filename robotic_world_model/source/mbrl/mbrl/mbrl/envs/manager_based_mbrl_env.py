@@ -31,6 +31,7 @@ class ManagerBasedMBRLEnv(ManagerBasedRLEnv):
         self.uncertainty_penalty_weight = None # type: float
         # termination flags
         self.termination_flags = None # type: torch.Tensor | None
+        self.termination_probs = None # type: torch.Tensor | None
 
 
     def prepare_imagination(self):
@@ -114,6 +115,7 @@ class ManagerBasedMBRLEnv(ManagerBasedRLEnv):
         parsed_imagination_states = self._parse_imagination_states(imagination_states_denormalized)
         parsed_extensions = self._parse_extensions(extensions)
         parsed_contacts = self._parse_contacts(contacts)
+        self.termination_probs = torch.sigmoid(terminations).squeeze(-1) if terminations is not None else None
         self.termination_flags = self._parse_terminations(terminations)
         self._compute_imagination_reward_terms(parsed_imagination_states, rollout_action, parsed_extensions, parsed_contacts)
         rewards, dones, extras = self._post_imagination_step()
@@ -144,6 +146,11 @@ class ManagerBasedMBRLEnv(ManagerBasedRLEnv):
         reset_env_ids = (terminated | time_outs).nonzero(as_tuple=False).squeeze(-1)
         if len(reset_env_ids) > 0:
             self._reset_imagination_idx(reset_env_ids)
+        self.imagination_extras.setdefault("log", {})
+        if self.termination_probs is not None:
+            self.imagination_extras["log"]["termination_prob_mean"] = self.termination_probs.mean()
+            self.imagination_extras["log"]["termination_prob_max"] = self.termination_probs.max()
+            self.imagination_extras["log"]["termination_rate"] = terminated.float().mean()
         self.imagination_extras["time_outs"] = time_outs
         return rewards, dones, self.imagination_extras
 

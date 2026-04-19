@@ -84,7 +84,7 @@ class CassieManagerBasedMBRLEnv(ManagerBasedMBRLEnv):
         joint_pos = parsed_imagination_states["joint_pos"]
         joint_vel = parsed_imagination_states["joint_vel"]
         joint_torque = parsed_imagination_states["joint_torque"]
-        joint_acc = (joint_vel - self.last_obs["policy"][:, 12:24]) / self.step_dt
+        joint_acc = (joint_vel - self.last_obs["policy"][:, 24:36]) / self.step_dt
 
         toe_contact = parsed_contacts.get("toe_contact")
         ankle_contact = parsed_extensions.get("ankle_contact")

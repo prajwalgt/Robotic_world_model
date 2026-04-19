@@ -12,7 +12,7 @@ from mbrl.rl.rsl_rl import (
 @configclass
 class CassieFlatPPOPretrainRunnerCfg(CassieFlatPPORunnerCfg):
     class_name: str = "MBPOOnPolicyRunner"
-
+    save_interval: int = 200
     system_dynamics = RslRlSystemDynamicsCfg(
         ensemble_size=1,
         history_horizon=32,

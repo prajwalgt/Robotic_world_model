@@ -22,14 +22,22 @@ class ManagerBasedVisualizeEnv(ManagerBasedMBRLEnv):
 
         
     def init_imagination_history(self, history_horizon):
-        self.imagination_state_history = torch.zeros(self.num_envs // 2, history_horizon, self.observation_manager.group_obs_dim["system_state"][0], device=self.device)
-        self.imagination_action_history = torch.zeros(self.num_envs // 2, history_horizon, self.observation_manager.group_obs_dim["system_action"][0], device=self.device)
+        self.num_imagination_envs = self.num_envs // 2
+        self.imagination_common_step_counter = 0
+        self.imagination_state_history = torch.zeros(self.num_imagination_envs, history_horizon, self.observation_manager.group_obs_dim["system_state"][0], device=self.device)
+        self.imagination_action_history = torch.zeros(self.num_imagination_envs, history_horizon, self.observation_manager.group_obs_dim["system_action"][0], device=self.device)
+        self.system_dynamics.reset()
+        self._sync_imagination_history(self.env_ids_real)
         
     
     def _sync_imagination_history(self, env_ids_real):
-        self.imagination_state_history[env_ids_real // 2] = 0.0
-        self.imagination_action_history[env_ids_real // 2] = 0.0
-        self.imagination_state_history[env_ids_real // 2, -1] = self.imagination_state_normalizer(self.observation_manager.compute()["system_state"])[env_ids_real]
+        env_ids_imagination = env_ids_real // 2
+        current_obs = self.observation_manager.compute()
+        self.imagination_state_history[env_ids_imagination] = 0.0
+        self.imagination_action_history[env_ids_imagination] = 0.0
+        self.system_dynamics.reset_partial(env_ids_imagination)
+        self.imagination_state_history[env_ids_imagination, -1] = self.imagination_state_normalizer(current_obs["system_state"])[env_ids_real]
+        self.imagination_action_history[env_ids_imagination, -1] = self.imagination_action_normalizer(current_obs["system_action"])[env_ids_real]
 
 
     def step(self, action: torch.Tensor) -> VecEnvStepReturn:
@@ -118,16 +126,16 @@ class ManagerBasedVisualizeEnv(ManagerBasedMBRLEnv):
 
 
     def _update_imagination_envs(self, action):
-        self.num_imagination_envs = len(self.env_ids_imagination)
         rollout_action = action[self.env_ids_imagination]
         self.imagination_action_history = torch.cat([self.imagination_action_history[:, 1:].clone(), self.imagination_action_normalizer(rollout_action).unsqueeze(1)], dim=1)
-        if self.system_dynamics.architecture_config["type"] in ["rnn", "rssm"]:
+        if self.system_dynamics.architecture_config["type"] in ["rnn", "rssm"] and self.imagination_common_step_counter > 0:
             self.imagination_state_history = self.imagination_state_history[:, -1].unsqueeze(1)
             self.imagination_action_history = self.imagination_action_history[:, -1].unsqueeze(1)
         imagination_states, *_ = self.system_dynamics.forward(self.imagination_state_history, self.imagination_action_history)
         imagination_states_denormalized = self.imagination_state_normalizer.inverse(imagination_states)
         parsed_imagination_states = self._parse_imagination_states(imagination_states_denormalized)
         self._reset_imagination_sim(parsed_imagination_states)
+        self.imagination_common_step_counter += 1
         self.imagination_state_history = torch.cat([self.imagination_state_history[:, 1:].clone(), imagination_states.unsqueeze(1)], dim=1)
 
 

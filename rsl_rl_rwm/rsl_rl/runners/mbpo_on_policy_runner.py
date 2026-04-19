@@ -189,7 +189,8 @@ class MBPOOnPolicyRunner(OnPolicyRunner):
         self.alg.system_dynamics.reset()
         with torch.inference_mode():
             for i in range(self.num_imagination_steps):
-                if self.alg.system_dynamics.architecture_config["type"] in ["rnn", "rssm"] and self.env.unwrapped.common_step_counter > 0:
+                imagination_step_counter = getattr(self.env.unwrapped, "imagination_common_step_counter", 0)
+                if self.alg.system_dynamics.architecture_config["type"] in ["rnn", "rssm"] and imagination_step_counter > 0:
                     self.state_history = self.state_history[:, -1:]
                     self.action_history = self.action_history[:, -1:]
                 imagination_obs = self.env.unwrapped.get_imagination_observation(self.state_history, self.action_history)
