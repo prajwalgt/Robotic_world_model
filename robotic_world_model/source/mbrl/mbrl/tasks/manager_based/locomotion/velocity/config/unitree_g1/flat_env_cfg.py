@@ -7,8 +7,6 @@ from isaaclab.utils import configclass
 from isaaclab_tasks.manager_based.locomotion.velocity.config.g1.rough_env_cfg import G1RoughEnvCfg, G1Rewards
 from isaaclab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import ObservationsCfg
 
-from isaaclab.terrains.config.rough import ROUGH_TERRAINS_CFG  # isort: skip
-
 from mbrl.mbrl.envs.mdp.commands import UniformVelocityCommand_Visualize, SampleUniformVelocityCommand
 import mbrl.tasks.manager_based.locomotion.velocity.mdp as mdp
 
@@ -68,17 +66,6 @@ class G1FlatEnvCfg_INIT(G1FlatEnvCfg):
             "robot", joint_names=[".*_hip_.*", ".*_knee_joint", ".*_ankle_.*"]
         )
         self.rewards.flat_orientation_l2.weight = -1.0
-        # revert terrain
-        self.scene.terrain.terrain_type = "generator"
-        self.scene.terrain.terrain_generator = ROUGH_TERRAINS_CFG
-        self.scene.terrain.terrain_generator.curriculum = False
-        self.scene.terrain.terrain_generator.difficulty_range = (0.0, 0.0)
-        self.scene.terrain.terrain_generator.sub_terrains["pyramid_stairs"].proportion = 0.0
-        self.scene.terrain.terrain_generator.sub_terrains["pyramid_stairs_inv"].proportion = 0.0
-        self.scene.terrain.terrain_generator.sub_terrains["boxes"].proportion = 0.0
-        self.scene.terrain.terrain_generator.sub_terrains["random_rough"].proportion = 1.0
-        self.scene.terrain.terrain_generator.sub_terrains["hf_pyramid_slope"].proportion = 0.0
-        self.scene.terrain.terrain_generator.sub_terrains["hf_pyramid_slope_inv"].proportion = 0.0
 
 
 @configclass
