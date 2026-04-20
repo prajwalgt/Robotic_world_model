@@ -158,7 +158,7 @@ class G1FlatPPOPretrainRunnerCfg(G1FlatPPORunnerCfg):
     def __post_init__(self):
         super().__post_init__()
 
-        self.max_iterations = 2000
+        self.max_iterations = 10000
 
 
 @configclass

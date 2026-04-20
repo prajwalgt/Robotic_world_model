@@ -114,7 +114,7 @@ class UnitreeG1FlatConfig(BaseConfig):
 
     @dataclass
     class PolicyTrainingConfig(BaseConfig.PolicyTrainingConfig):
-        save_interval: int = 50
+        save_interval: int = 200
         max_iterations: int = 500
 
     experiment_config: ExperimentConfig = field(default_factory=ExperimentConfig)
