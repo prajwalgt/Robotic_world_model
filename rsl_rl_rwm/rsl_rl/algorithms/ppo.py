@@ -45,6 +45,9 @@ class PPO:
         symmetry_cfg: dict | None = None,
         # Distributed training parameters
         multi_gpu_cfg: dict | None = None,
+        # RSL-RL 5.0 compatibility (unused in this fork)
+        share_cnn_encoders: bool = False,
+        check_for_nan: bool = False,
     ):
         # device-related parameters
         self.device = device

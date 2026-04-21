@@ -5,14 +5,14 @@ from isaaclab.managers import SceneEntityCfg
 from isaaclab.utils import configclass
 
 from isaaclab_tasks.manager_based.locomotion.velocity.config.g1.rough_env_cfg import G1RoughEnvCfg, G1Rewards
-from isaaclab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import ObservationsCfg
+from isaaclab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import ObservationsCfg, RewardsCfg
 
 from mbrl.mbrl.envs.mdp.commands import UniformVelocityCommand_Visualize, SampleUniformVelocityCommand
 import mbrl.tasks.manager_based.locomotion.velocity.mdp as mdp
 
 
 @configclass
-class G1RewardsCfg_TRAIN(G1Rewards):
+class G1RewardsCfg_TRAIN(RewardsCfg):
     stand_still = RewTerm(
         func=mdp.joint_pos_stand_still, weight=-1.0, params={"command_name": "base_velocity", "threshold": 0.05}
     )
@@ -28,18 +28,30 @@ class G1FlatEnvCfg(G1RoughEnvCfg):
         super().__post_init__()
 
         # override rewards for flat terrain (from G1FlatEnvCfg in isaaclab_tasks)
-        self.rewards.track_ang_vel_z_exp.weight = 1.0
-        self.rewards.lin_vel_z_l2.weight = -0.2
-        self.rewards.action_rate_l2.weight = -0.005
-        self.rewards.dof_acc_l2.weight = -1.0e-7
-        self.rewards.feet_air_time.weight = 0.75
-        self.rewards.feet_air_time.params["threshold"] = 0.4
-        self.rewards.dof_torques_l2.weight = -2.0e-6
-        self.rewards.dof_torques_l2.params["asset_cfg"] = SceneEntityCfg(
-            "robot", joint_names=[".*_hip_.*", ".*_knee_joint"]
-        )
-        self.rewards.flat_orientation_l2.weight = -5.0
+        # self.rewards.track_ang_vel_z_exp.weight = 1.0
+        # self.rewards.lin_vel_z_l2.weight = -0.2
+        # self.rewards.action_rate_l2.weight = -0.005
+        # self.rewards.dof_acc_l2.weight = -1.0e-7
+        # self.rewards.feet_air_time.weight = 0.75
+        # self.rewards.feet_air_time.params["threshold"] = 0.4
+        # self.rewards.dof_torques_l2.weight = -2.0e-6
+        # self.rewards.dof_torques_l2.params["asset_cfg"] = SceneEntityCfg(
+        #     "robot", joint_names=[".*_hip_.*", ".*_knee_joint"]
+        # )
+        # self.rewards.flat_orientation_l2.weight = -5.0
         # change terrain to flat
+        self.rewards.flat_orientation_l2.weight = -5.0
+        self.rewards.feet_air_time.weight = 0.5
+        self.rewards.feet_air_time.weight = 0.0
+        self.rewards.track_lin_vel_xy_exp.weight = 1.0
+        self.rewards.track_ang_vel_z_exp.weight = 0.5
+        self.rewards.lin_vel_z_l2.weight = -2.0
+        self.rewards.ang_vel_xy_l2.weight = -0.05
+        self.rewards.dof_acc_l2.weight = -2.5e-7
+        self.rewards.dof_torques_l2.weight = -2.5e-5
+        self.rewards.action_rate_l2.weight = -0.05
+        self.rewards.undesired_contacts.weight = -1.0
+
         self.scene.terrain.terrain_type = "plane"
         self.scene.terrain.terrain_generator = None
         # no height scan
@@ -56,16 +68,16 @@ class G1FlatEnvCfg_INIT(G1FlatEnvCfg):
         super().__post_init__()
 
         # revert rewards to rough-terrain defaults for initial data collection
-        self.rewards.track_ang_vel_z_exp.weight = 2.0
-        self.rewards.lin_vel_z_l2.weight = 0.0
-        self.rewards.action_rate_l2.weight = -0.005
-        self.rewards.dof_acc_l2.weight = -1.25e-7
-        self.rewards.feet_air_time.weight = 0.25
-        self.rewards.dof_torques_l2.weight = -1.5e-7
-        self.rewards.dof_torques_l2.params["asset_cfg"] = SceneEntityCfg(
-            "robot", joint_names=[".*_hip_.*", ".*_knee_joint", ".*_ankle_.*"]
-        )
-        self.rewards.flat_orientation_l2.weight = -1.0
+        # self.rewards.track_ang_vel_z_exp.weight = 2.0
+        # self.rewards.lin_vel_z_l2.weight = 0.0
+        # self.rewards.action_rate_l2.weight = -0.005
+        # self.rewards.dof_acc_l2.weight = -1.25e-7
+        # self.rewards.feet_air_time.weight = 0.25
+        # self.rewards.dof_torques_l2.weight = -1.5e-7
+        # self.rewards.dof_torques_l2.params["asset_cfg"] = SceneEntityCfg(
+        #     "robot", joint_names=[".*_hip_.*", ".*_knee_joint", ".*_ankle_.*"]
+        # )
+        # self.rewards.flat_orientation_l2.weight = -1.0
 
 
 @configclass
