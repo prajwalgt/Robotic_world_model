@@ -24,12 +24,14 @@ class ManagerBasedVisualizeEnv(ManagerBasedMBRLEnv):
     def init_imagination_history(self, history_horizon):
         self.imagination_state_history = torch.zeros(self.num_envs // 2, history_horizon, self.observation_manager.group_obs_dim["system_state"][0], device=self.device)
         self.imagination_action_history = torch.zeros(self.num_envs // 2, history_horizon, self.observation_manager.group_obs_dim["system_action"][0], device=self.device)
+        # self._sync_imagination_history(self.env_ids_real)
         
     
     def _sync_imagination_history(self, env_ids_real):
         self.imagination_state_history[env_ids_real // 2] = 0.0
         self.imagination_action_history[env_ids_real // 2] = 0.0
         self.imagination_state_history[env_ids_real // 2, -1] = self.imagination_state_normalizer(self.observation_manager.compute()["system_state"])[env_ids_real]
+        # self.system_dynamics.reset_partial((env_ids_real // 2).tolist())
 
 
     def step(self, action: torch.Tensor) -> VecEnvStepReturn:

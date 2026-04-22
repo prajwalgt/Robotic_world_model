@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 from isaaclab.utils import configclass
+from isaaclab_rl.rsl_rl import RslRlPpoActorCriticCfg
 
 from isaaclab_tasks.manager_based.locomotion.velocity.config.anymal_d.agents.rsl_rl_ppo_cfg import AnymalDFlatPPORunnerCfg
 from mbrl.rl.rsl_rl import (
@@ -17,6 +18,14 @@ from mbrl.rl.rsl_rl import (
 @configclass
 class AnymalDFlatPPOPretrainRunnerCfg(AnymalDFlatPPORunnerCfg):
     class_name: str = "MBPOOnPolicyRunner"
+    policy = RslRlPpoActorCriticCfg(
+        init_noise_std=1.0,
+        actor_obs_normalization=False,
+        critic_obs_normalization=False,
+        actor_hidden_dims=[128, 128, 128],
+        critic_hidden_dims=[128, 128, 128],
+        activation="elu",
+    )
 
     system_dynamics = RslRlSystemDynamicsCfg(
         ensemble_size=1,

@@ -12,7 +12,7 @@ import mbrl.tasks.manager_based.locomotion.velocity.mdp as mdp
 
 
 @configclass
-class G1RewardsCfg_TRAIN(RewardsCfg):
+class G1RewardsCfg_TRAIN(G1Rewards):
     stand_still = RewTerm(
         func=mdp.joint_pos_stand_still, weight=-1.0, params={"command_name": "base_velocity", "threshold": 0.05}
     )
@@ -50,7 +50,7 @@ class G1FlatEnvCfg(G1RoughEnvCfg):
         self.rewards.dof_acc_l2.weight = -2.5e-7
         self.rewards.dof_torques_l2.weight = -2.5e-5
         self.rewards.action_rate_l2.weight = -0.05
-        self.rewards.undesired_contacts.weight = -1.0
+        # self.rewards.undesired_contacts.weight = -1.0
 
         self.scene.terrain.terrain_type = "plane"
         self.scene.terrain.terrain_generator = None
@@ -186,6 +186,9 @@ class G1FlatEnvCfg_VISUALIZE(G1FlatEnvCfg_PRETRAIN):
         # override commands
         self.commands.base_velocity.class_type = UniformVelocityCommand_Visualize
         self.commands.base_velocity.resampling_time_range = (2.0, 2.0)
+        self.commands.base_velocity.ranges.lin_vel_x = (1.0, 1.0)
+        self.commands.base_velocity.ranges.lin_vel_y = (0.0, 0.0)
+        self.commands.base_velocity.ranges.ang_vel_z = (0.0, 0.0)
         # override randomization
         self.events.reset_base.func = mdp.reset_root_state_uniform_visualize
         self.events.reset_base.params = {
